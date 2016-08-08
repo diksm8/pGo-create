@@ -32,12 +32,12 @@ def main(accounts, size, password, domain, outfile):
 	while counter != accounts:
 		username = id_generator(size)
 		email = '%s@%s' % (username, domain)
-		password = password if password != None else id_generator(12, string.ascii_uppercase + string.ascii_lowercase + string.digits)
-		make_account(username, password, email, driver)
-		accept_tos(username, password)
+		_password = password if password != None else id_generator(12, string.ascii_uppercase + string.ascii_lowercase + string.digits)
+		make_account(username, _password, email, driver)
+		accept_tos(username, _password)
 		d = {
 			'Username': username,
-			'Password': password,
+			'Password': _password,
 			'Email': email,
 			'Date created': time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime()),
 			'ToS accepted': True
