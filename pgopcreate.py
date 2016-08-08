@@ -12,15 +12,15 @@ import click, time, random, string, json
 @click.option('--accounts', default=50, help='Number of accounts to make, default is 50.')
 @click.option('--size', default=10, type=click.IntRange(6, 16, clamp=True), help='Username size, range between 5 and 20.')
 @click.option('--domain', default="yopmail.com", help='Email domain, default is yopmail.com.')
+@click.option('--password', prompt='Password', help='Password for accounts')
 @click.argument('outfile', type=click.File('w'), default='accounts.json', required=False)
-@click.password_option()
 def main(accounts, size, password, domain, outfile):
 	"""This is a script to create Pokémon Go (PTC) accounts and accept the Terms of Service. Made by a skid who can't code for shit."""
 	counter = 0
 	while counter < accounts:
 		username = id_generator(size)
 		email = '%s@%s' % (username, domain)
-		make_account(username, email)
+		make_account(username, password, email)
 		accept_tos(username, password)
 		d = {
 			'Username': username,
@@ -46,7 +46,7 @@ def accept_tos(username, password):
 	response = req.call()
 	click.echo('Accepted Terms of Service for user {}'.format(username))
 
-def make_account(username, email):
+def make_account(username, password, email):
 	driver = webdriver.Chrome()
 	driver.get("https://club.pokemon.com/us/pokemon-trainer-club/sign-up/")
 	#elem = driver.find_element_by_name("dob")
