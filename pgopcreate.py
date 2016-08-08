@@ -17,10 +17,10 @@ sys.setdefaultencoding('utf-8')
 @click.option('--password', prompt='Password', help='Password for accounts')
 @click.argument('outfile', type=click.File('r+'), default='accounts.json', required=False)
 def main(accounts, size, password, domain, outfile):
-	"""This is a script to create Pokémon Go (PTC) accounts and accept the Terms of Service. Made by a skid who can't code for shit."""
+	"""This is a script to create Pokémon Go (PTC) accounts and accept the Terms of Service. Made by two skid who can't code for shit."""
 	counter = 0
 	driver = webdriver.Chrome()
-	
+
 	# Load existing accounts
 	if (outfile.read(1) == ""):
 		accounts_array = []
