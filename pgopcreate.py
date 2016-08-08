@@ -6,17 +6,19 @@ from pgoapi import PGoApi
 from pgoapi.utilities import f2i
 from pgoapi import utilities as util
 from pgoapi.exceptions import AuthException
-import click, time, random, string, json, sys, os
+from lxml import html
+import click, time, random, string, json, sys, os, requests
+
+requests.packages.urllib3.disable_warnings()
 reload(sys)
 sys.setdefaultencoding('utf-8')
 
 @click.command()
 @click.option('--accounts', default=50, help='Number of accounts to make, default is 50.')
 @click.option('--size', default=10, type=click.IntRange(6, 16, clamp=True), help='Username size, range between 5 and 20.')
-@click.option('--domain', default="yopmail.com", help='Email domain, default is yopmail.com.')
 @click.option('--password', default=None, help='Password for accounts')
 @click.argument('outfile', default='accounts.json', required=False)
-def main(accounts, size, password, domain, outfile):
+def main(accounts, size, password, outfile):
 	"""This is a script to create Pokémon Go (PTC) accounts and accept the Terms of Service. Made by two skids who can't code for shit."""
 	counter = 0
 	driver = webdriver.Chrome()
@@ -31,16 +33,21 @@ def main(accounts, size, password, domain, outfile):
 
 	while counter != accounts:
 		username = id_generator(size)
-		email = '%s@%s' % (username, domain)
+		anonbox = make_anonbox()
+		email = anonbox[0]
 		_password = password if password != None else id_generator(12, string.ascii_uppercase + string.ascii_lowercase + string.digits)
+		
 		make_account(username, _password, email, driver)
 		accept_tos(username, _password)
+		email_accepted = accept_email(anonbox[1], username)
+
 		d = {
 			'Username': username,
 			'Password': _password,
 			'Email': email,
 			'Date created': time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime()),
-			'ToS accepted': True
+			'ToS accepted': True,
+			'Email accepted': email_accepted
 		}
 		accounts_array.append(d)
 		outfile.seek(0)
@@ -51,6 +58,19 @@ def main(accounts, size, password, domain, outfile):
 
 def id_generator(size, chars=string.ascii_uppercase + string.digits):
 	return ''.join(random.choice(chars) for _ in range(size))
+
+def accept_email(box, username):
+	counter = 0
+	while counter != 60:
+		emails = requests.get(box, verify=False).text
+		if len(emails) <= 1:
+			time.sleep(0.2)
+			counter += 1
+			continue
+		for line in emails.split('\n'):
+			if line.startswith('https://'):
+				return True if 'Thank you for signing up! Your account is now active.' in requests.get(line).text else False
+	return False
 
 def accept_tos(username, password):
 	api = PGoApi()
@@ -79,6 +99,13 @@ def make_account(username, password, email, driver):
 	driver.find_element_by_class_name('button-green').click()
 	driver.refresh()
 	click.echo('Account %s created' % username)
+
+def make_anonbox():
+	anonbox = requests.get('https://anonbox.net/en/', verify=False)
+	tree = html.fromstring(anonbox.text.encode())
+	address = tree.get_element_by_id('content').find('dl')[1].text_content()
+	inbox = tree.get_element_by_id('content').find('dl')[3].text_content()
+	return([address,inbox])
 
 if __name__ == '__main__':
 	main()
