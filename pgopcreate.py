@@ -15,7 +15,7 @@ import click, time, random, string, json
 @click.option('--password', prompt='Password', help='Password for accounts')
 @click.argument('outfile', type=click.File('w'), default='accounts.json', required=False)
 def main(accounts, size, password, domain, outfile):
-	"""This is a script to create Pokémon Go (PTC) accounts and accept the Terms of Service. Made by a skid who can't code for shit."""
+	"""This is a script to create Pokémon Go (PTC) accounts and accept the Terms of Service. Made by two skids who can't code for shit."""
 	counter = 0
 	driver = webdriver.Chrome()
 	while counter < accounts:
