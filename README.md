@@ -5,5 +5,5 @@ And [PoGoTos](https://github.com/TachyonRSA/PoGoTos) by [TachyonRSA](https://git
 ##ToDo
 - [X] Fix output to not overwrite
 - [X] Fix json output to look like http://pastebin.com/dZy4ZNf5
-- [ ] If no password is given, randomize password for each account
+- [x] If no password is given, randomize password for each account
 - [ ] Make the different functions not wait for eachoter

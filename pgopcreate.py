@@ -14,7 +14,7 @@ sys.setdefaultencoding('utf-8')
 @click.option('--accounts', default=50, help='Number of accounts to make, default is 50.')
 @click.option('--size', default=10, type=click.IntRange(6, 16, clamp=True), help='Username size, range between 5 and 20.')
 @click.option('--domain', default="yopmail.com", help='Email domain, default is yopmail.com.')
-@click.option('--password', prompt='Password', help='Password for accounts')
+@click.option('--password', default=None, help='Password for accounts')
 @click.argument('outfile', default='accounts.json', required=False)
 def main(accounts, size, password, domain, outfile):
 	"""This is a script to create Pokémon Go (PTC) accounts and accept the Terms of Service. Made by two skids who can't code for shit."""
@@ -32,6 +32,7 @@ def main(accounts, size, password, domain, outfile):
 	while counter != accounts:
 		username = id_generator(size)
 		email = '%s@%s' % (username, domain)
+		password = password if password != None else id_generator(12, string.ascii_uppercase + string.ascii_lowercase + string.digits)
 		make_account(username, password, email, driver)
 		accept_tos(username, password)
 		d = {
