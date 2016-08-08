@@ -77,7 +77,7 @@ with open('accounts.txt', 'w') as outfile:
 		json.dump(d, outfile, sort_keys=True, indent=4)
 		#Update counter and report back
 		counter+=1
-		if counter = 0:
+		if counter == 0:
 			print 'Created user named %s, 1 account made.' % (username,)
 		else:
 			print 'Created user named %s, %s accounts made.' % (username, counter)
