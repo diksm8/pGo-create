@@ -17,10 +17,11 @@ import click, time, random, string, json
 def main(accounts, size, password, domain, outfile):
 	"""This is a script to create Pokémon Go (PTC) accounts and accept the Terms of Service. Made by a skid who can't code for shit."""
 	counter = 0
+	driver = webdriver.Chrome()
 	while counter < accounts:
 		username = id_generator(size)
 		email = '%s@%s' % (username, domain)
-		make_account(username, password, email)
+		make_account(username, password, email, driver)
 		accept_tos(username, password)
 		d = {
 			'Username': username,
@@ -46,8 +47,7 @@ def accept_tos(username, password):
 	response = req.call()
 	click.echo('Accepted Terms of Service for user {}'.format(username))
 
-def make_account(username, password, email):
-	driver = webdriver.Chrome()
+def make_account(username, password, email, driver):
 	driver.get("https://club.pokemon.com/us/pokemon-trainer-club/sign-up/")
 	#elem = driver.find_element_by_name("dob")
 	driver.implicitly_wait(3)
