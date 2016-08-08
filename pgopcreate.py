@@ -6,30 +6,36 @@ from pgoapi import PGoApi
 from pgoapi.utilities import f2i
 from pgoapi import utilities as util
 from pgoapi.exceptions import AuthException
-import string
-import random
-import time
-import json
-import pprint
-import threading
-import sys, getopt
+import click, time, random, string, json
 
-#set counter and password. Edit password if you want to
-counter = 0
-password = "4k9dzlm39"
-userSize = 10
+@click.command()
+@click.option('--accounts', default=50, help='Number of accounts to make, default is 50.')
+@click.option('--size', default=10, type=click.IntRange(6, 16, clamp=True), help='Username size, range between 5 and 20.')
+@click.option('--domain', default="yopmail.com", help='Email domain, default is yopmail.com.')
+@click.argument('outfile', type=click.File('w'), default='accounts.json', required=False)
+@click.password_option()
+def main(accounts, size, password, domain, outfile):
+	"""This is a script to create Pokémon Go (PTC) accounts and accept the Terms of Service. Made by a skid who can't code for shit."""
+	counter = 0
+	while counter < accounts:
+		username = id_generator(size)
+		email = '%s@%s' % (username, domain)
+		make_account(username, email)
+		accept_tos(username, password)
+		d = {
+			'Username': username,
+			'Password': password,
+			'Email': email,
+			'Date created': time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime()),
+			'ToS accepted': True
+		}
+		json.dump(d, outfile, indent=4)
+		counter+=1
+		click.echo('Account %s written to file. Completed %s accounts.' % (username, counter)) 
 
-#Set numbers of accounts to create to valuve after script name, 500 if nothing entered
-if len(sys.argv) > 1:
-    times = int(sys.argv[1])
-else:
-    times = 500
-
-#Generate username
 def id_generator(size, chars=string.ascii_uppercase + string.digits):
 	return ''.join(random.choice(chars) for _ in range(size))
 
-#Accept TOS
 def accept_tos(username, password):
 	api = PGoApi()
 	api.set_position(40.7127837, -74.005941, 0.0)
@@ -38,7 +44,7 @@ def accept_tos(username, password):
 	req = api.create_request()
 	req.mark_tutorial_complete(tutorials_completed = 0, send_marketing_emails = False, send_push_notifications = False)
 	response = req.call()
-	print('Accepted Terms of Service for {}'.format(username))
+	click.echo('Accepted Terms of Service for user {}'.format(username))
 
 def make_account(username, email):
 	driver = webdriver.Chrome()
@@ -57,27 +63,7 @@ def make_account(username, email):
 	driver.find_element_by_id('id_terms').click()
 	driver.find_element_by_class_name('button-green').click()
 	driver.refresh()
+	click.echo('Account %s created' % username)
 
-with open('accounts.txt', 'w') as outfile:
-	while counter < times:
-		#get username and email
-		username = id_generator(userSize)
-		email = username + "@yopmail.com"
-		#Make account and accept tos
-		make_account(username, email)
-		accept_tos(username, password)
-		#Write account to file
-		d = {
-			'Username': username,
-			'Password': password,
-			'Email': email,
-			'Date created': time.strftime("%Y-%m-%d %H:%M:%S", gmtime()),
-			'ToS accepted': True
-		}
-		json.dump(d, outfile, sort_keys=True, indent=4)
-		#Update counter and report back
-		counter+=1
-		if counter == 0:
-			print 'Created user named %s, 1 account made.' % (username,)
-		else:
-			print 'Created user named %s, %s accounts made.' % (username, counter)
+if __name__ == '__main__':
+	main()
