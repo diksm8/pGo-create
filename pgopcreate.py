@@ -6,7 +6,7 @@ from pgoapi import PGoApi
 from pgoapi.utilities import f2i
 from pgoapi import utilities as util
 from pgoapi.exceptions import AuthException
-import click, time, random, string, json, sys
+import click, time, random, string, json, sys, os
 reload(sys)
 sys.setdefaultencoding('utf-8')
 
@@ -15,11 +15,12 @@ sys.setdefaultencoding('utf-8')
 @click.option('--size', default=10, type=click.IntRange(6, 16, clamp=True), help='Username size, range between 5 and 20.')
 @click.option('--domain', default="yopmail.com", help='Email domain, default is yopmail.com.')
 @click.option('--password', prompt='Password', help='Password for accounts')
-@click.argument('outfile', type=click.File('r+'), default='accounts.json', required=False)
+@click.argument('outfile', default='accounts.json', required=False)
 def main(accounts, size, password, domain, outfile):
 	"""This is a script to create Pokémon Go (PTC) accounts and accept the Terms of Service. Made by two skids who can't code for shit."""
 	counter = 0
 	driver = webdriver.Chrome()
+	outfile = open(outfile, 'r+' if os.path.exists(outfile) else 'w+')
 
 	# Load existing accounts
 	if (outfile.read(1) == ""):
