@@ -24,7 +24,7 @@ def main(accounts, size, password, outfile):
 
 	while counter != accounts:
 		username = idGenerator(size)
-		anonbox = make_anonbox()
+		anonbox = makeAnonbox()
 		email = anonbox[0]
 		_password = password if password != None else idGenerator(12, string.ascii_uppercase + string.ascii_lowercase + string.digits)
 
@@ -51,7 +51,7 @@ def main(accounts, size, password, outfile):
 		accountStore.accounts.append(d)
 		accountStore.save()
 		counter += 1
-		
+
 		click.echo('Account %s written to file. Completed %s accounts.' % (username, counter)) 
 	accountStore.done()
 
@@ -95,34 +95,43 @@ def makeClubAccount(username, password, email, dob='1986-12-12', country='US'):
 	session.headers.update(headers)
 	
 	# Get cookies first.
-	req = session.get(signupUrl)
+	try:
+		req = session.get(signupUrl, timeout=5)
+	except:
+		return False
 	if u'Create Your Pokémon Trainer Club Account' not in req.text:
 		return False
 	csrfCookie = requests.utils.dict_from_cookiejar(session.cookies)['csrftoken']
 
-	req = session.post(signupUrl, data={
-		'csrfmiddlewaretoken': csrfCookie,
-		'dob': dob,
-		'undefined': 7,
-		'undefined': dob.split('-')[0],
-		'country': country,
-		'country': country,
-	}, headers = {'Referer': signupUrl})
+	try:
+		req = session.post(signupUrl, data={
+			'csrfmiddlewaretoken': csrfCookie,
+			'dob': dob,
+			'undefined': int(dob.split('-')[1])-1,
+			'undefined': dob.split('-')[0],
+			'country': country,
+			'country': country,
+		}, headers = {'Referer': signupUrl}, timeout=5)
+	except:
+		return False
 	
 	if u'Your username is the name you will use to sign in to your account. Only you will see this name.' not in req.text:
 		return False
 
-	req = session.post(parentSignupUrl, data={
-		'csrfmiddlewaretoken': csrfCookie,
-		'username': username,
-		'password': password,
-		'confirm_password': password,
-		'email': email,
-		'confirm_email': email,
-		'public_profile_opt_in': True,
-		'screen_name': username,
-		'terms': 'on',
-	}, headers = {'Referer': parentSignupUrl})
+	try:
+		req = session.post(parentSignupUrl, data={
+			'csrfmiddlewaretoken': csrfCookie,
+			'username': username,
+			'password': password,
+			'confirm_password': password,
+			'email': email,
+			'confirm_email': email,
+			'public_profile_opt_in': True,
+			'screen_name': username,
+			'terms': 'on',
+		}, headers = {'Referer': parentSignupUrl}, timeout=5)
+	except:
+		return False
 
 	if u'Thank you for creating a Pokémon Trainer Club account.' not in req.text:
 		return False
@@ -136,7 +145,7 @@ def makeClubAccount(username, password, email, dob='1986-12-12', country='US'):
 			'Email accepted': False
 	}
 
-def make_anonbox():
+def makeAnonbox():
 	anonbox = requests.get('https://anonbox.net/en/', verify=False)
 	tree = html.fromstring(anonbox.text.encode())
 	address = tree.get_element_by_id('content').find('dl')[1].text_content()
