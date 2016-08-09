@@ -5,7 +5,7 @@ Based on [Pokemon Trainer Account Mass Account Generator](https://github.com/dan
 * Create accounts
 * Verify email
 * Accept Pokémon Go ToS using API
-* Ouput to neat json file
+* Ouput to neat json file [Example](https://github.com/diksm8/pGo-create/blob/master/README.md#example-output)
 
 ##Usage
 `pgocreate.py [OPTIONS] [OUTFILE]`
@@ -35,6 +35,13 @@ Based on [Pokemon Trainer Account Mass Account Generator](https://github.com/dan
     }
 ]
 ```
+
+##Requirements that can be hard to find
+#####pgoapi
+`pip install git+https://github.com/keyphact/pgoapi.git#egg=pgoapi`
+#####lxml
+Navigate to www.lfd.uci.edu/~gohlke/pythonlibs/#lxml and download the correct version for you, probably `lxml-3.6.1-cp27-cp27m-win32.whl` and install it using `pip install lxml-3.6.1-cp27-cp27m-win32.whl`
+
 
 ##ToDo
 - [X] Fix output to not overwrite
