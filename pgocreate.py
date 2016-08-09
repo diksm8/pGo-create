@@ -21,16 +21,18 @@ sys.setdefaultencoding('utf-8')
 def main(accounts, size, password, outfile):
 	"""This is a script to create Pokémon Go (PTC) accounts and accept the Terms of Service. Made by two skids who can't code for shit."""
 	counter = 0
+	accountStore = pokeAccountStore(outfile)
 	driver = webdriver.Chrome()
 	outfile = open(outfile, 'r+' if os.path.exists(outfile) else 'w+')
 
+	'''
 	# Load existing accounts
 	if (outfile.read(1) == ""):
 		accounts_array = []
 	else:
 		outfile.seek(0)
 		accounts_array = json.load(outfile)
-
+		'''
 	while counter != accounts:
 		username = id_generator(size)
 		anonbox = make_anonbox()
@@ -41,13 +43,12 @@ def main(accounts, size, password, outfile):
 		d['ToS accepted'] = accept_tos(username, _password)
 		d['Email accepted'] = accept_email(anonbox[1], username)
 
-		accounts_array.append(d)
-		outfile.seek(0)
-		json.dump(accounts_array, outfile, indent=4)
-		
+		accountStore.accounts.append(d)
+		accountStore.save()
+
 		counter+=1
 		click.echo('Account %s written to file. Completed %s accounts.' % (username, counter)) 
-	outfile.close()
+	accountStore.done()
 
 def id_generator(size, chars=string.ascii_uppercase + string.digits):
 	return ''.join(random.choice(chars) for _ in range(size))
@@ -105,6 +106,22 @@ def make_anonbox():
 	address = tree.get_element_by_id('content').find('dl')[1].text_content()
 	inbox = tree.get_element_by_id('content').find('dl')[3].text_content()
 	return([address,inbox])
+
+class pokeAccountStore:
+	def __init__(self, accountsFile):
+		self.accountsFile = open(accountsFile, 'r+' if os.path.exists(accountsFile) else 'w+')
+		if (self.accountsFile.read(1) == ""):
+			self.accounts = []
+		else:
+			self.accountsFile.seek(0)
+			self.accounts = json.load(self.accountsFile)
+	def save(self):
+		self.accountsFile.seek(0)
+		json.dump(self.accounts, self.accountsFile, indent=4)
+	def done(self):
+		self.accountsFile.seek(0)
+		json.dump(self.accounts, self.accountsFile, indent=4)
+		self.accountsFile.close
 
 if __name__ == '__main__':
 	main()
