@@ -24,29 +24,24 @@ def main(accounts, size, password, outfile):
 
 	while counter != accounts:
 		username = idGenerator(size)
-		anonbox = makeAnonbox()
-		email = anonbox[0]
+		anonbox = pokeAnonbox()
+		email = anonbox.email
 		_password = password if password != None else idGenerator(12, string.ascii_uppercase + string.ascii_lowercase + string.digits)
 
-		retryCount = 0
-		d = False
-		while retryCount < 10:
-			d = makeClubAccount(username, _password, email)
-			if d:
-				click.echo('Account %s created' % username)
-				break
-			else:
-				click.echo('Error while creating account %s, retrying (retry count %d)' % (username, retryCount))
-				retryCount += 1
-				continue
-		if d == False:
-			click.echo('Account %s couldn\'t be created, skipping.' % username)
+		d = [False, 0]
+
+		d = makeClubAccount(username, _password, email)
+		if type(d) == dict:
+			click.echo('Account %s created' % username)
+		else:
+			click.echo('Account %s couldn\'t be created (error at stage %d), skipping.' % (username, d[1]))
 			continue
 
-		acceptTOS(username, _password)
-		click.echo('Accepted Terms of Service for user {}'.format(username))
-		d['TOS accepted'] = True
-		d['Email accepted'] = acceptEmail(anonbox[1], username)
+		tosAcceptState = acceptTOS(username, _password)
+		if tosAcceptState:
+			click.echo('Accepted Terms of Service for user %s' % username)
+		d['TOS accepted'] = tosAcceptState
+		d['Email accepted'] = anonbox.accept()
 
 		accountStore.accounts.append(d)
 		accountStore.save()
@@ -58,19 +53,6 @@ def main(accounts, size, password, outfile):
 def idGenerator(size, chars=string.ascii_uppercase + string.digits):
 	return ''.join(random.choice(chars) for _ in range(size))
 
-def acceptEmail(box, username):
-	counter = 0
-	while counter != 60:
-		emails = requests.get(box, verify=False).text
-		if len(emails) <= 1:
-			time.sleep(0.2)
-			counter += 1
-			continue
-		for line in emails.split('\n'):
-			if line.startswith('https://'):
-				return True if 'Thank you for signing up! Your account is now active.' in requests.get(line).text else False
-	return False
-
 def acceptTOS(username, password):
 	api = PGoApi()
 	api.set_position(40.7127837, -74.005941, 0.0)
@@ -79,62 +61,93 @@ def acceptTOS(username, password):
 	req = api.create_request()
 	req.mark_tutorial_complete(tutorials_completed = 0, send_marketing_emails = False, send_push_notifications = False)
 	response = req.call()
+	if type(response) == dict and response['status_code'] == 1 and response['responses']['MARK_TUTORIAL_COMPLETE']['success'] == True:
+		return True
+	else:
+		return False
 
 def makeClubAccount(username, password, email, dob='1986-12-12', country='US'):
-	headers = {
+	signupUrl  = 'https://club.pokemon.com/us/pokemon-trainer-club/sign-up/'
+	parentSignupUrl = 'https://club.pokemon.com/us/pokemon-trainer-club/parents/sign-up'
+
+	session = requests.Session()
+	session.headers.update({
 		'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
 		'Accept-Encoding': 'gzip, deflate, sdch, br',
 		'Accept-Language': 'pl-PL,pl;q=0.8,en-US;q=0.6,en;q=0.4',
 		'Cache-Control': 'max-age=0',
 		'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/51.0.2704.79 Safari/537.36 Edge/14.14393'
-	}
-	signupUrl  = 'https://club.pokemon.com/us/pokemon-trainer-club/sign-up/'
-	parentSignupUrl = 'https://club.pokemon.com/us/pokemon-trainer-club/parents/sign-up'
-
-	session = requests.Session()
-	session.headers.update(headers)
+	})
 	
 	# Get cookies first.
-	try:
-		req = session.get(signupUrl, timeout=5)
-	except:
-		return False
+	retryCount = 0
+	while True:
+		try:
+			req = session.get(signupUrl, timeout=3)
+			if ('overwhelming demand for access' in req.text):
+				print('under maintenance, retrying')
+				continue
+			break
+		except:
+			retryCount += 1
+			if retryCount > 4:
+				return [False, 0]
 	if u'Create Your Pokémon Trainer Club Account' not in req.text:
-		return False
+		return [False, 0]
 	csrfCookie = requests.utils.dict_from_cookiejar(session.cookies)['csrftoken']
 
-	try:
-		req = session.post(signupUrl, data={
-			'csrfmiddlewaretoken': csrfCookie,
-			'dob': dob,
-			'undefined': int(dob.split('-')[1])-1,
-			'undefined': dob.split('-')[0],
-			'country': country,
-			'country': country,
-		}, headers = {'Referer': signupUrl}, timeout=5)
-	except:
-		return False
+	stageOneData = {
+		'csrfmiddlewaretoken': csrfCookie,
+		'dob': dob,
+		'undefined': int(dob.split('-')[1])-1,
+		'undefined': dob.split('-')[0],
+		'country': country,
+		'country': country,
+	}
+	stageTwoData = {
+		'csrfmiddlewaretoken': csrfCookie,
+		'username': username,
+		'password': password,
+		'confirm_password': password,
+		'email': email,
+		'confirm_email': email,
+		'public_profile_opt_in': True,
+		'screen_name': username,
+		'terms': 'on',
+	}
+
+	retryCount = 0
+	while True:
+		try:
+			req = session.post(signupUrl, data=stageOneData, headers = {'Referer': signupUrl}, timeout=3)
+			if ('overwhelming demand for access' in req.text):
+				print('under maintenance, retrying')
+				continue
+			break
+		except:
+			retryCount += 1
+			if retryCount > 4:
+				return [False, 1]
 	
 	if u'Your username is the name you will use to sign in to your account. Only you will see this name.' not in req.text:
-		return False
+		return [False, 1]
 
-	try:
-		req = session.post(parentSignupUrl, data={
-			'csrfmiddlewaretoken': csrfCookie,
-			'username': username,
-			'password': password,
-			'confirm_password': password,
-			'email': email,
-			'confirm_email': email,
-			'public_profile_opt_in': True,
-			'screen_name': username,
-			'terms': 'on',
-		}, headers = {'Referer': parentSignupUrl}, timeout=5)
-	except:
-		return False
+	retryCount = 0
+	while True:
+		try:
+			req = session.post(parentSignupUrl, data=stageTwoData, headers = {'Referer': parentSignupUrl}, timeout=6)
+			if ('overwhelming demand for access' in req.text):
+				print('under maintenance, retrying')
+				continue
+			break
+		except:
+			retryCount +=1
+			if retryCount > 8:
+				return [False, 2]
 
-	if u'Thank you for creating a Pokémon Trainer Club account.' not in req.text:
-		return False
+	
+		if u'Thank you for creating a Pokémon Trainer Club account.' not in req.text:
+			return [False, 2]
 
 	return {
 			'Username': username,
@@ -145,12 +158,29 @@ def makeClubAccount(username, password, email, dob='1986-12-12', country='US'):
 			'Email accepted': False
 	}
 
-def makeAnonbox():
-	anonbox = requests.get('https://anonbox.net/en/', verify=False)
-	tree = html.fromstring(anonbox.text.encode())
-	address = tree.get_element_by_id('content').find('dl')[1].text_content()
-	inbox = tree.get_element_by_id('content').find('dl')[3].text_content()
-	return([address,inbox])
+class pokeAnonbox():
+	def __init__(self):
+		req = requests.get('https://anonbox.net/en/', verify=False)
+		tree = html.fromstring(req.text.encode())
+		self.email = tree.get_element_by_id('content').find('dl')[1].text_content()
+		self.inbox = tree.get_element_by_id('content').find('dl')[3].text_content()
+		self.accepted = False
+	def accept(self):
+		counter = 0
+		while counter != 60:
+			emails = requests.get(self.inbox, verify=False).text
+			if len(emails) <= 1:
+				time.sleep(0.2)
+				counter += 1
+				continue
+			for line in emails.split('\n'):
+				if line.startswith('https://'):
+					if 'Thank you for signing up! Your account is now active.' in requests.get(line).text:
+						self.accepted = True
+						return True
+					return False
+		return False
+
 
 class pokeAccountStore:
 	def __init__(self, accountsFile):
