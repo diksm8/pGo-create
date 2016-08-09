@@ -21,12 +21,42 @@ def main(accounts, size, password, outfile):
 	"""This is a script to create Pokémon Go (PTC) accounts and accept the Terms of Service. Made by two skids who can't code for shit."""
 	counter = 0
 	accountStore = pokeAccountStore(outfile)
+<<<<<<< HEAD
 
 	while counter != accounts:
 		username = idGenerator(size)
 		anonbox = pokeAnonbox()
 		email = anonbox.email
 		_password = password if password != None else idGenerator(12, string.ascii_uppercase + string.ascii_lowercase + string.digits)
+=======
+	driver = webdriver.Chrome()
+	outfile = open(outfile, 'r+' if os.path.exists(outfile) else 'w+')
+
+	'''
+	# Load existing accounts
+	if (outfile.read(1) == ""):
+		accounts_array = []
+	else:
+		outfile.seek(0)
+		accounts_array = json.load(outfile)
+		'''
+	while counter != accounts:
+		username = id_generator(size)
+		anonbox = make_anonbox()
+		email = anonbox[0]
+		_password = password if password != None else id_generator(12, string.ascii_uppercase + string.ascii_lowercase + string.digits)
+		
+		d = make_account(username, _password, email, driver)
+		d['ToS accepted'] = accept_tos(username, _password)
+		d['Email accepted'] = accept_email(anonbox[1], username)
+
+		accountStore.accounts.append(d)
+		accountStore.save()
+
+		counter+=1
+		click.echo('Account %s written to file. Completed %s accounts.' % (username, counter)) 
+	accountStore.done()
+>>>>>>> refs/remotes/origin/master
 
 		d = [False, 0]
 
@@ -61,6 +91,7 @@ def acceptTOS(username, password):
 	req = api.create_request()
 	req.mark_tutorial_complete(tutorials_completed = 0, send_marketing_emails = False, send_push_notifications = False)
 	response = req.call()
+<<<<<<< HEAD
 	if type(response) == dict and response['status_code'] == 1 and response['responses']['MARK_TUTORIAL_COMPLETE']['success'] == True:
 		return True
 	else:
@@ -149,11 +180,31 @@ def makeClubAccount(username, password, email, dob='1986-12-12', country='US'):
 		if u'Thank you for creating a Pokémon Trainer Club account.' not in req.text:
 			return [False, 2]
 
+=======
+	return True if type(response) == dict and response['status_code'] == 1 and response['responses']['MARK_TUTORIAL_COMPLETE']['success'] == True else False
+
+def make_account(username, password, email, driver):
+	driver.get("https://club.pokemon.com/us/pokemon-trainer-club/sign-up/")
+	#elem = driver.find_element_by_name("dob")
+	driver.implicitly_wait(3)
+	driver.execute_script("document.getElementById('id_dob').removeAttribute('readonly')")
+	driver.execute_script("document.getElementById('id_dob').value='1986-12-12'")
+	driver.find_element_by_class_name('continue-button').click()
+	driver.find_element_by_id('id_username').send_keys(username)
+	driver.find_element_by_id('id_password').send_keys(password)
+	driver.find_element_by_id('id_confirm_password').send_keys(password)
+	driver.find_element_by_id('id_email').send_keys(email)
+	driver.find_element_by_id('id_confirm_email').send_keys(email)
+	driver.find_element_by_id('id_screen_name').send_keys(username)
+	driver.find_element_by_id('id_terms').click()
+	driver.find_element_by_class_name('button-green').click()
+>>>>>>> refs/remotes/origin/master
 	return {
 			'Username': username,
 			'Password': password,
 			'Email': email,
 			'Date created': time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime()),
+<<<<<<< HEAD
 			'TOS accepted': False,
 			'Email accepted': False
 	}
@@ -196,6 +247,34 @@ class pokeAccountStore:
 	def done(self):
 		self.accountsFile.seek(0)
 		json.dump(self.accounts, self.accountsFile, indent=2)
+		self.accountsFile.close
+=======
+			'ToS accepted': False,
+			'Email accepted': False
+		}
+
+def make_anonbox():
+	anonbox = requests.get('https://anonbox.net/en/', verify=False)
+	tree = html.fromstring(anonbox.text.encode())
+	address = tree.get_element_by_id('content').find('dl')[1].text_content()
+	inbox = tree.get_element_by_id('content').find('dl')[3].text_content()
+	return([address,inbox])
+>>>>>>> refs/remotes/origin/master
+
+class pokeAccountStore:
+	def __init__(self, accountsFile):
+		self.accountsFile = open(accountsFile, 'r+' if os.path.exists(accountsFile) else 'w+')
+		if (self.accountsFile.read(1) == ""):
+			self.accounts = []
+		else:
+			self.accountsFile.seek(0)
+			self.accounts = json.load(self.accountsFile)
+	def save(self):
+		self.accountsFile.seek(0)
+		json.dump(self.accounts, self.accountsFile, indent=4)
+	def done(self):
+		self.accountsFile.seek(0)
+		json.dump(self.accounts, self.accountsFile, indent=4)
 		self.accountsFile.close
 
 if __name__ == '__main__':
