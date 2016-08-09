@@ -5,7 +5,7 @@ from pgoapi.utilities import f2i
 from pgoapi import utilities as util
 from pgoapi.exceptions import AuthException
 from lxml import html
-import click, time, random, string, json, sys, os, requests
+import click, time, random, string, json, sys, os, requests, threading, Queue
 
 requests.packages.urllib3.disable_warnings()
 reload(sys)
@@ -19,54 +19,85 @@ sys.setdefaultencoding('utf-8')
 
 def main(accounts, size, password, outfile):
 	"""This is a script to create Pokémon Go (PTC) accounts and accept the Terms of Service. Made by two skids who can't code for shit."""
-	counter = 0
+	global accountStore
 	accountStore = pokeAccountStore(outfile)
+	accountCounter = 0
 
-	while counter != accounts:
-		username = idGenerator(size)
-		anonbox = pokeAnonbox()
-		email = anonbox.email
-		_password = password if password != None else idGenerator(12, string.ascii_uppercase + string.ascii_lowercase + string.digits)
+	threads = []
+	for _ in range(4):
+		for x in [ worker_accountCreator, worker_tosAccepter, worker_mailAccepter ]:
+			thread = threading.Thread(target=x)
+			thread.daemon = True
+			thread.start()
+			threads.append(thread)
 
-		d = [False, 0]
+	def pushNewAccount():
+		newAccount = accountObject(accountStore)
+		newAccount.username = idGenerator(size)
+		newAccount.password = password if password != None else idGenerator(12, string.ascii_uppercase + string.ascii_lowercase + string.digits)
+		creatorQueue.put(newAccount)
 
-		d = makeClubAccount(username, _password, email)
-		if type(d) == dict:
-			click.echo('Account %s created' % username)
+	for _ in range(accounts):
+		pushNewAccount()
+
+	while True:
+		if accountCounter == accounts:
+			break
+		logItem = logQueue.get()
+		if type(logItem) != bool:
+			if logItem == "WRITE BLYAD":
+				accountStore.save()
+			else:
+				print(logItem)
+		elif logItem == True:
+			accountCounter += 1
 		else:
-			click.echo('Account %s couldn\'t be created (error at stage %d), skipping.' % (username, d[1]))
-			continue
+			pushNewAccount()
 
-		tosAcceptState = acceptTOS(username, _password)
-		if tosAcceptState:
-			click.echo('Accepted Terms of Service for user %s' % username)
-		d['TOS accepted'] = tosAcceptState
-		d['Email accepted'] = anonbox.accept()
-
-		accountStore.accounts.append(d)
-		accountStore.save()
-		counter += 1
-
-		click.echo('Account %s written to file. Completed %s accounts.' % (username, counter)) 
+	#for x in threads:
+	#	thread.join()
 	accountStore.done()
+
+def worker_accountCreator():
+	while True:
+		Account = creatorQueue.get()
+		while True:
+			Account = makeClubAccount(Account)
+			if Account.errorState == None:
+				logQueue.put('Created account '+Account.username)
+				Account.save()
+				logQueue.put('WRITE BLYAD')
+				tosQueue.put(Account)
+				break
+			else:
+				logQueue.put(False)
+
+
+def worker_tosAccepter():
+	while True:
+		Account = tosQueue.get()
+		Account.acceptTos()
+		if Account.tosAccept == True:
+			logQueue.put('Accepted TOS for account '+Account.username)
+		Account.save()
+		logQueue.put('WRITE BLYAD')
+		verifierQueue.put(Account)
+
+def worker_mailAccepter():
+	while True:
+		Account = verifierQueue.get()
+		Account.emailAccept = Account.mailbox.accept()
+		if Account.emailAccept == True:
+			logQueue.put('Accepted email for account '+Account.username)
+		logQueue.put(True)
+		Account.makeDictionary()
+		Account.save()
+		logQueue.put('WRITE BLYAD')
 
 def idGenerator(size, chars=string.ascii_uppercase + string.digits):
 	return ''.join(random.choice(chars) for _ in range(size))
 
-def acceptTOS(username, password):
-	api = PGoApi()
-	api.set_position(40.7127837, -74.005941, 0.0)
-	api.login('ptc', username, password)
-	time.sleep(2)
-	req = api.create_request()
-	req.mark_tutorial_complete(tutorials_completed = 0, send_marketing_emails = False, send_push_notifications = False)
-	response = req.call()
-	if type(response) == dict and response['status_code'] == 1 and response['responses']['MARK_TUTORIAL_COMPLETE']['success'] == True:
-		return True
-	else:
-		return False
-
-def makeClubAccount(username, password, email, dob='1986-12-12', country='US'):
+def makeClubAccount(accObj):
 	signupUrl  = 'https://club.pokemon.com/us/pokemon-trainer-club/sign-up/'
 	parentSignupUrl = 'https://club.pokemon.com/us/pokemon-trainer-club/parents/sign-up'
 
@@ -85,34 +116,35 @@ def makeClubAccount(username, password, email, dob='1986-12-12', country='US'):
 		try:
 			req = session.get(signupUrl, timeout=3)
 			if ('overwhelming demand for access' in req.text):
-				print('under maintenance, retrying')
 				continue
 			break
 		except:
 			retryCount += 1
 			if retryCount > 4:
-				return [False, 0]
+				accObj.errorState = 0
+				return accObj
 	if u'Create Your Pokémon Trainer Club Account' not in req.text:
-		return [False, 0]
+		accObj.errorState = 0
+		return accObj
 	csrfCookie = requests.utils.dict_from_cookiejar(session.cookies)['csrftoken']
 
 	stageOneData = {
 		'csrfmiddlewaretoken': csrfCookie,
-		'dob': dob,
-		'undefined': int(dob.split('-')[1])-1,
-		'undefined': dob.split('-')[0],
-		'country': country,
-		'country': country,
+		'dob': accObj.dob,
+		'undefined': int(accObj.dob.split('-')[1])-1,
+		'undefined': accObj.dob.split('-')[0],
+		'country': accObj.country,
+		'country': accObj.country,
 	}
 	stageTwoData = {
 		'csrfmiddlewaretoken': csrfCookie,
-		'username': username,
-		'password': password,
-		'confirm_password': password,
-		'email': email,
-		'confirm_email': email,
+		'username': accObj.username,
+		'password': accObj.password,
+		'confirm_password': accObj.password,
+		'email': accObj.mailbox.email,
+		'confirm_email': accObj.mailbox.email,
 		'public_profile_opt_in': True,
-		'screen_name': username,
+		'screen_name': accObj.username,
 		'terms': 'on',
 	}
 
@@ -121,44 +153,39 @@ def makeClubAccount(username, password, email, dob='1986-12-12', country='US'):
 		try:
 			req = session.post(signupUrl, data=stageOneData, headers = {'Referer': signupUrl}, timeout=3)
 			if ('overwhelming demand for access' in req.text):
-				print('under maintenance, retrying')
 				continue
 			break
 		except:
 			retryCount += 1
 			if retryCount > 4:
-				return [False, 1]
+				accObj.errorState = 1
+				return accObj
 	
 	if u'Your username is the name you will use to sign in to your account. Only you will see this name.' not in req.text:
-		return [False, 1]
+		accObj.errorState = 1
+		return accObj
 
 	retryCount = 0
 	while True:
 		try:
 			req = session.post(parentSignupUrl, data=stageTwoData, headers = {'Referer': parentSignupUrl}, timeout=6)
 			if ('overwhelming demand for access' in req.text):
-				print('under maintenance, retrying')
 				continue
 			break
 		except:
 			retryCount +=1
 			if retryCount > 8:
-				return [False, 2]
+				accObj.errorState = 1
+				return accObj
 
-	
 		if u'Thank you for creating a Pokémon Trainer Club account.' not in req.text:
-			return [False, 2]
+			accObj.errorState = 1
+			return accObj
 
-	return {
-			'Username': username,
-			'Password': password,
-			'Email': email,
-			'Date created': time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime()),
-			'TOS accepted': False,
-			'Email accepted': False
-	}
+	accObj.makeDictionary()
+	return accObj
 
-class pokeAnonbox():
+class pokeAnonbox:
 	def __init__(self):
 		req = requests.get('https://anonbox.net/en/', verify=False)
 		tree = html.fromstring(req.text.encode())
@@ -181,7 +208,6 @@ class pokeAnonbox():
 					return False
 		return False
 
-
 class pokeAccountStore:
 	def __init__(self, accountsFile):
 		self.accountsFile = open(accountsFile, 'r+' if os.path.exists(accountsFile) else 'w+')
@@ -192,11 +218,61 @@ class pokeAccountStore:
 			self.accounts = json.load(self.accountsFile)
 	def save(self):
 		self.accountsFile.seek(0)
+		self.accountsFile.truncate()
 		json.dump(self.accounts, self.accountsFile, indent=2)
+	def add(self, acc):
+		self.accounts.append(acc)
+	def upd(self, pos, acc):
+		self.accounts[pos] = acc
 	def done(self):
-		self.accountsFile.seek(0)
-		json.dump(self.accounts, self.accountsFile, indent=2)
+		self.save()
 		self.accountsFile.close
 
+class accountObject:
+	def __init__(self, accountStore=None):
+		self.username = None
+		self.password = None
+		self.country = 'US'
+		self.dob = '1986-12-12'
+		self.mailbox = pokeAnonbox()
+		self.creationDate = time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime())
+		self.tosAccept = False
+		self.emailAccept = False
+		self.dictionary = {}
+		self.errorState = None
+		self.storeIndex = None
+		self.accountStore = accountStore
+	def acceptTos(self):
+		api = PGoApi()
+		api.set_position(40.7127837, -74.005941, 0.0)
+		api.login('ptc', self.username, self.password)
+		time.sleep(2)
+		req = api.create_request()
+		req.mark_tutorial_complete(tutorials_completed = 0, send_marketing_emails = False, send_push_notifications = False)
+		response = req.call()
+		if type(response) == dict and response['status_code'] == 1 and response['responses']['MARK_TUTORIAL_COMPLETE']['success'] == True:
+			self.tosAccept = True
+			self.makeDictionary()
+	def makeDictionary(self):
+		self.dictionary = {
+			'Username': self.username,
+			'Password': self.password,
+			'Email': self.mailbox.email,
+			'Date created': time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime()),
+			'TOS accepted': self.tosAccept,
+			'Email accepted': self.emailAccept
+		}
+	def save(self):
+		if self.accountStore != None:
+			if self.storeIndex == None:
+				self.storeIndex = len(self.accountStore.accounts)
+				self.accountStore.add(self.dictionary)
+			else:
+				self.accountStore.upd(self.storeIndex, self.dictionary)
 if __name__ == '__main__':
+	creatorQueue = Queue.Queue()
+	tosQueue = Queue.Queue()
+	verifierQueue = Queue.Queue()
+	logQueue = Queue.Queue()
+
 	main()
