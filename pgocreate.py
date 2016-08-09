@@ -37,21 +37,14 @@ def main(accounts, size, password, outfile):
 		email = anonbox[0]
 		_password = password if password != None else id_generator(12, string.ascii_uppercase + string.ascii_lowercase + string.digits)
 		
-		make_account(username, _password, email, driver)
-		accept_tos(username, _password)
-		email_accepted = accept_email(anonbox[1], username)
+		d = make_account(username, _password, email, driver)
+		d['ToS accepted'] = accept_tos(username, _password)
+		d['Email accepted'] = accept_email(anonbox[1], username)
 
-		d = {
-			'Username': username,
-			'Password': _password,
-			'Email': email,
-			'Date created': time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime()),
-			'ToS accepted': True,
-			'Email accepted': email_accepted
-		}
 		accounts_array.append(d)
 		outfile.seek(0)
 		json.dump(accounts_array, outfile, indent=4)
+		
 		counter+=1
 		click.echo('Account %s written to file. Completed %s accounts.' % (username, counter)) 
 	outfile.close()
@@ -80,7 +73,7 @@ def accept_tos(username, password):
 	req = api.create_request()
 	req.mark_tutorial_complete(tutorials_completed = 0, send_marketing_emails = False, send_push_notifications = False)
 	response = req.call()
-	click.echo('Accepted Terms of Service for user {}'.format(username))
+	return True if type(response) == dict and response['status_code'] == 1 and response['responses']['MARK_TUTORIAL_COMPLETE']['success'] == True else False
 
 def make_account(username, password, email, driver):
 	driver.get("https://club.pokemon.com/us/pokemon-trainer-club/sign-up/")
@@ -97,8 +90,14 @@ def make_account(username, password, email, driver):
 	driver.find_element_by_id('id_screen_name').send_keys(username)
 	driver.find_element_by_id('id_terms').click()
 	driver.find_element_by_class_name('button-green').click()
-	driver.refresh()
-	click.echo('Account %s created' % username)
+	return {
+			'Username': username,
+			'Password': password,
+			'Email': email,
+			'Date created': time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime()),
+			'ToS accepted': False,
+			'Email accepted': False
+		}
 
 def make_anonbox():
 	anonbox = requests.get('https://anonbox.net/en/', verify=False)
