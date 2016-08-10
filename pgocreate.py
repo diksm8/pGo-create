@@ -3,7 +3,7 @@
 from pgoapi import PGoApi
 from pgoapi.utilities import f2i
 from pgoapi import utilities as util
-from pgoapi.exceptions import AuthException, NotLoggedInException
+from pgoapi.exceptions import AuthException, NotLoggedInException, ServerSideRequestThrottlingException
 from lxml import html
 import click, colorama, time, random, string, json, sys, os, requests, threading, Queue
 
@@ -15,7 +15,7 @@ sys.setdefaultencoding('utf-8')
 @click.option('--accounts', default=50, help='Number of accounts to make, default is 50.')
 @click.option('--size', default=10, type=click.IntRange(6, 16, clamp=True), help='Username size, range between 5 and 20.')
 @click.option('--password', default=None, help='Password to use for all accounts. If this option is not used passwords will be randomized for each account.')
-@click.option('--threads', default=4, type=click.IntRange(1,16, clamp=True), help='Amount of threads for each task, range between 1 and 16. Default is 4.')
+@click.option('--threads', default=4, type=click.IntRange(1,128, clamp=True), help='Amount of threads for each task, range between 1 and 128. Default is 4, no more than 16 is recommended.')
 @click.argument('outfile', default='accounts.json', required=False)
 @click.command()
 def main(accounts, size, password, threads, outfile):
@@ -72,6 +72,7 @@ def worker_accountCreator(counters):
 			verifierQueue.put(Account)
 		else:
 			logQueue.put(False)
+			logQueue.put(click.style('Error occured at stage %d when creating account %s' % (Account.errorState, Account.username), fg='red', bold=True))
 	return True
 
 
@@ -200,6 +201,13 @@ def acceptTos(username, password):
 			if retryCount > 3:
 				return False
 			retryCount += 1
+		except ServerSideRequestThrottlingException:
+			time.sleep(requestSleepTimer)
+			if requestSleepTimer == 5.1:
+				logQueue.put(click.style('[TOS accepter] Received slow down warning. Using max delay of 5.1 already.', fg='red', bold=True))
+			else:
+				logQueue.put(click.style('[TOS accepter] Received slow down warning. Increasing delay from %d to %d.' % (requestSleepTimer, requestSleepTimer+0.2), fg='red', bold=True))
+				requestSleepTimer += 0.2
 
 	time.sleep(2)
 	req = api.create_request()
@@ -226,9 +234,17 @@ class pokeAnonbox:
 				continue
 			for line in emails.split('\n'):
 				if line.startswith('https://'):
-					if 'Thank you for signing up! Your account is now active.' in requests.get(line).text:
-						self.accepted = True
-						return True
+					try:
+						if 'Thank you for signing up! Your account is now active.' in requests.get(line).text:
+							self.accepted = True
+							return True
+					except requests.ConnectionError:
+						time.sleep(requestSleepTimerB)
+						if requestSleepTimerB == 5.1:
+							logQueue.put(click.style('[Mail accepter] Received slow down warning. Using max delay of 5.1 already.', fg='red', bold=True))
+						else:
+							logQueue.put(click.style('[Mail accepter] Received slow down warning. Increasing delay from %d to %d.' % (requestSleepTimerB, requestSleepTimerB+0.2), fg='red', bold=True))
+							requestSleepTimerB += 0.2
 					return False
 		return False
 
@@ -294,6 +310,8 @@ if __name__ == '__main__':
 	tosQueue = Queue.Queue()
 	verifierQueue = Queue.Queue()
 	logQueue = Queue.Queue()
+	requestSleepTimer  = 0.1
+	requestSleepTimerB = 0.1
 
 	try:
 		main(standalone_mode=False)
