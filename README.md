@@ -51,3 +51,5 @@ Navigate to www.lfd.uci.edu/~gohlke/pythonlibs/#lxml and download the correct ve
 - [x] If no password is given, randomize password for each account
 - [x] Make the different functions not wait for eachoter (Threading)
     - ~~Too scared to do this part :/~~
+- [ ] Gain publicity
+    - Too scared to do this part :/ might gain issues we need to fix
