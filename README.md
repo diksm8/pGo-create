@@ -6,6 +6,7 @@ Based on ~~[Pokemon Trainer Account Mass Account Generator](https://github.com/d
 * Verify email
 * Accept Pokémon Go ToS using API
 * Ouput to neat json file [Example](https://github.com/diksm8/pGo-create/blob/master/README.md#example-output)
+* Threading
 
 ##Usage
 `pgocreate.py [OPTIONS] [OUTFILE]`
