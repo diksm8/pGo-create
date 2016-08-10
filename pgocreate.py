@@ -61,6 +61,7 @@ def main(accounts, size, password, threads, outfile):
 def worker_accountCreator(counters):
 	while counters[0] != counters[3]:
 		Account = creatorQueue.get()
+		Account.setupMailbox()
 		Account = makeClubAccount(Account)
 		if Account.errorState == None:
 			logQueue.put(click.style('Created account %s.' % Account.username, fg = 'green', bold=True))
@@ -258,13 +259,15 @@ class accountObject:
 		self.password = None
 		self.country = 'US'
 		self.dob = '1986-12-12'
-		self.mailbox = pokeAnonbox()
+		self.mailbox = None
 		self.creationDate = time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime())
 		self.tosAccept = False
 		self.emailAccept = False
 		self.errorState = None
 		self.storeIndex = None
 		self.accountStore = accountStore
+	def setupMailbox(self):
+		self.mailbox = pokeAnonbox()
 	def to_dict(self):
 		return {
 			'Username': self.username,
