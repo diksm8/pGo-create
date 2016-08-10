@@ -26,6 +26,8 @@ def main(accounts, size, password, threads, outfile):
 	accountCounters = [0,0,0,accounts]
 
 	threadsArr = []
+	if threads > accounts:
+		threads = accounts
 	for _ in range(threads):
 		for x in [ worker_accountCreator, worker_tosAccepter, worker_mailAccepter ]:
 			thread = threading.Thread(target=x, args=(accountCounters, ))
