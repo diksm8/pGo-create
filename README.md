@@ -40,9 +40,12 @@ Based on ~~[Pokemon Trainer Account Mass Account Generator](https://github.com/d
 
 ##Install
 ###Windows
-Installation on windows requires an extra step.
+Installation on windows requires extra steps.
+
 
 Navigate to www.lfd.uci.edu/~gohlke/pythonlibs/#lxml and download `lxml-3.6.1-cp27-cp27m-win32.whl`. Install it using `pip install lxml-3.6.1-cp27-cp27m-win32.whll`. If you get an error (very unlikely) try the `lxml-3.6.1-cp27-cp27m-win_amd64.whl` instead.
+
+Install [Microsoft Visual C++ Compiler for Python 2.7](https://www.microsoft.com/en-us/download/details.aspx?id=44266)
 
 After that you can install the actual script. Clone this repo and navigate to it, run `python setupt.py install`.
 ###Unix (OSX/Linux)
