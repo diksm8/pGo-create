@@ -13,6 +13,7 @@ Based on ~~[Pokemon Trainer Account Mass Account Generator](https://github.com/d
 * `--accounts` Number of accounts to make. Default is 50.
 * `--size` Size of username, range between 6 and 16. Default is 10.
 * `--password` Password to use for all accounts. If this option is not used passwords will be randomized for each account.
+* `--threads` Amount of threads for each task, range between 1 and 16. Default is 4.
 
 ##Example output
 ```JSON

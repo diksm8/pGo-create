@@ -3,7 +3,7 @@
 from pgoapi import PGoApi
 from pgoapi.utilities import f2i
 from pgoapi import utilities as util
-from pgoapi.exceptions import AuthException
+from pgoapi.exceptions import AuthException, NotLoggedInException
 from lxml import html
 import click, colorama, time, random, string, json, sys, os, requests, threading, Queue
 
@@ -11,13 +11,13 @@ requests.packages.urllib3.disable_warnings()
 reload(sys)
 sys.setdefaultencoding('utf-8')
 
-@click.command()
+
 @click.option('--accounts', default=50, help='Number of accounts to make, default is 50.')
 @click.option('--size', default=10, type=click.IntRange(6, 16, clamp=True), help='Username size, range between 5 and 20.')
 @click.option('--password', default=None, help='Password to use for all accounts. If this option is not used passwords will be randomized for each account.')
-@click.option('--threads', default=4, type=click.IntRange(1,8, clamp=True), help='Amount of threads per each task. Default is 4.')
+@click.option('--threads', default=4, type=click.IntRange(1,16, clamp=True), help='Amount of threads for each task, range between 1 and 16. Default is 4.')
 @click.argument('outfile', default='accounts.json', required=False)
-
+@click.command()
 def main(accounts, size, password, threads, outfile):
 	"""This is a script to create Pokémon Go (PTC) accounts and accept the Terms of Service. Made by two skids who can't code for shit."""
 	global accountStore
@@ -186,7 +186,18 @@ def makeClubAccount(accObj):
 def acceptTos(username, password):
 	api = PGoApi()
 	api.set_position(40.7127837, -74.005941, 0.0)
-	api.login('ptc', username, password)
+
+	retryCount = 0
+	while True:
+		try:
+			api.login('ptc', username, password)
+			break
+		except AuthException, NotLoggedInException:
+			time.sleep(0.15)
+			if retryCount > 3:
+				return False
+			retryCount += 1
+
 	time.sleep(2)
 	req = api.create_request()
 	req.mark_tutorial_complete(tutorials_completed = 0, send_marketing_emails = False, send_push_notifications = False)
@@ -272,10 +283,24 @@ class accountObject:
 				self.accountStore.add(self.to_dict())
 			else:
 				self.accountStore.upd(self.storeIndex, self.to_dict())
+
 if __name__ == '__main__':
 	creatorQueue = Queue.Queue()
 	tosQueue = Queue.Queue()
 	verifierQueue = Queue.Queue()
 	logQueue = Queue.Queue()
 
-	main()
+	try:
+		main(standalone_mode=False)
+	except (EOFError, KeyboardInterrupt):
+		raise click.Abort()
+	except click.ClickException as e:
+		e.show()
+		sys.exit(e.exit_code)
+	except click.Abort:
+		global accountStore
+		accountStore.done()
+		click.echo('Aborted!', file=sys.stderr)
+		sys.exit(1)
+
+	sys.exit(0)
