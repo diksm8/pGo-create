@@ -13,6 +13,7 @@ Based on ~~[Pokemon Trainer Account Mass Account Generator](https://github.com/d
 * `--accounts` Number of accounts to make. Default is 50.
 * `--size` Size of username, range between 6 and 16. Default is 10.
 * `--password` Password to use for all accounts. If this option is not used passwords will be randomized for each account.
+* `--threads` Amount of threads for each task, range between 1 and 16. Default is 4.
 
 ##Example output
 ```JSON
@@ -47,5 +48,5 @@ Navigate to www.lfd.uci.edu/~gohlke/pythonlibs/#lxml and download the correct ve
 - [X] Fix output to not overwrite
 - [X] Fix json output to look like http://pastebin.com/dZy4ZNf5
 - [x] If no password is given, randomize password for each account
-- [ ] Make the different functions not wait for eachoter (Threading)
-    - Too scared to do this part :/
+- [x] Make the different functions not wait for eachoter (Threading)
+    - ~~Too scared to do this part :/~~
