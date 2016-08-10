@@ -5,7 +5,7 @@ from pgoapi.utilities import f2i
 from pgoapi import utilities as util
 from pgoapi.exceptions import AuthException
 from lxml import html
-import click, time, random, string, json, sys, os, requests, threading, Queue
+import click, colorama, time, random, string, json, sys, os, requests, threading, Queue
 
 requests.packages.urllib3.disable_warnings()
 reload(sys)
@@ -14,22 +14,24 @@ sys.setdefaultencoding('utf-8')
 @click.command()
 @click.option('--accounts', default=50, help='Number of accounts to make, default is 50.')
 @click.option('--size', default=10, type=click.IntRange(6, 16, clamp=True), help='Username size, range between 5 and 20.')
-@click.option('--password', default=None, help='Password for accounts')
+@click.option('--password', default=None, help='Password to use for all accounts. If this option is not used passwords will be randomized for each account.')
+@click.option('--threads', default=4, type=click.IntRange(1,8, clamp=True), help='Amount of threads per each task. Default is 4.')
 @click.argument('outfile', default='accounts.json', required=False)
 
-def main(accounts, size, password, outfile):
+def main(accounts, size, password, threads, outfile):
 	"""This is a script to create Pokémon Go (PTC) accounts and accept the Terms of Service. Made by two skids who can't code for shit."""
 	global accountStore
 	accountStore = pokeAccountStore(outfile)
-	accountCounter = 0
 
-	threads = []
-	for _ in range(4):
+	accountCounters = [0,0,0,accounts]
+
+	threadsArr = []
+	for _ in range(threads):
 		for x in [ worker_accountCreator, worker_tosAccepter, worker_mailAccepter ]:
-			thread = threading.Thread(target=x)
+			thread = threading.Thread(target=x, args=(accountCounters, ))
 			thread.daemon = True
 			thread.start()
-			threads.append(thread)
+			threadsArr.append(thread)
 
 	def pushNewAccount():
 		newAccount = accountObject(accountStore)
@@ -41,58 +43,55 @@ def main(accounts, size, password, outfile):
 		pushNewAccount()
 
 	while True:
-		if accountCounter == accounts:
-			break
 		logItem = logQueue.get()
 		if type(logItem) != bool:
 			if logItem == "WRITE BLYAD":
 				accountStore.save()
 			else:
-				print(logItem)
-		elif logItem == True:
-			accountCounter += 1
-		else:
+				click.echo(logItem)
+		elif logItem == False:
 			pushNewAccount()
+		if accountCounters[0] == accountCounters[1] and accountCounters[1] == accountCounters[2] and accountCounters[2] == accountCounters[3]:
+			break
 
-	#for x in threads:
-	#	thread.join()
 	accountStore.done()
 
-def worker_accountCreator():
-	while True:
+def worker_accountCreator(counters):
+	while counters[0] != counters[3]:
 		Account = creatorQueue.get()
-		while True:
-			Account = makeClubAccount(Account)
-			if Account.errorState == None:
-				logQueue.put('Created account '+Account.username)
-				Account.save()
-				logQueue.put('WRITE BLYAD')
-				tosQueue.put(Account)
-				break
-			else:
-				logQueue.put(False)
+		Account = makeClubAccount(Account)
+		if Account.errorState == None:
+			logQueue.put(click.style('Created account %s.' % Account.username, fg = 'green', bold=True))
+			Account.save()
+			counters[0]+=1
+			logQueue.put('WRITE BLYAD')
+			tosQueue.put(Account)
+			verifierQueue.put(Account)
+		else:
+			logQueue.put(False)
+	return True
 
 
-def worker_tosAccepter():
-	while True:
+def worker_tosAccepter(counters):
+	while counters[1] != counters[3]:
 		Account = tosQueue.get()
-		Account.acceptTos()
-		if Account.tosAccept == True:
-			logQueue.put('Accepted TOS for account '+Account.username)
+		if Account.acceptTos() == True:
+			logQueue.put(click.style('Accepted TOS for account %s.' % Account.username, fg = 'cyan', bold=False))
 		Account.save()
+		counters[1]+=1
 		logQueue.put('WRITE BLYAD')
-		verifierQueue.put(Account)
+	return True
 
-def worker_mailAccepter():
-	while True:
+def worker_mailAccepter(counters):
+	while counters[2] != counters[3]:
 		Account = verifierQueue.get()
 		Account.emailAccept = Account.mailbox.accept()
 		if Account.emailAccept == True:
-			logQueue.put('Accepted email for account '+Account.username)
-		logQueue.put(True)
-		Account.makeDictionary()
+			logQueue.put(click.style('Accepted email for account %s.' % Account.username, fg = 'magenta', bold=False))
 		Account.save()
+		counters[2]+=1
 		logQueue.put('WRITE BLYAD')
+	return True
 
 def idGenerator(size, chars=string.ascii_uppercase + string.digits):
 	return ''.join(random.choice(chars) for _ in range(size))
@@ -182,8 +181,19 @@ def makeClubAccount(accObj):
 			accObj.errorState = 1
 			return accObj
 
-	accObj.makeDictionary()
 	return accObj
+
+def acceptTos(username, password):
+	api = PGoApi()
+	api.set_position(40.7127837, -74.005941, 0.0)
+	api.login('ptc', username, password)
+	time.sleep(2)
+	req = api.create_request()
+	req.mark_tutorial_complete(tutorials_completed = 0, send_marketing_emails = False, send_push_notifications = False)
+	response = req.call()
+	if type(response) == dict and response['status_code'] == 1 and response['responses']['MARK_TUTORIAL_COMPLETE']['success'] == True:
+		return True
+	return False
 
 class pokeAnonbox:
 	def __init__(self):
@@ -220,13 +230,14 @@ class pokeAccountStore:
 		self.accountsFile.seek(0)
 		self.accountsFile.truncate()
 		json.dump(self.accounts, self.accountsFile, indent=2)
+		self.accountsFile.flush()
 	def add(self, acc):
 		self.accounts.append(acc)
 	def upd(self, pos, acc):
 		self.accounts[pos] = acc
 	def done(self):
 		self.save()
-		self.accountsFile.close
+		self.accountsFile.close()
 
 class accountObject:
 	def __init__(self, accountStore=None):
@@ -238,23 +249,11 @@ class accountObject:
 		self.creationDate = time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime())
 		self.tosAccept = False
 		self.emailAccept = False
-		self.dictionary = {}
 		self.errorState = None
 		self.storeIndex = None
 		self.accountStore = accountStore
-	def acceptTos(self):
-		api = PGoApi()
-		api.set_position(40.7127837, -74.005941, 0.0)
-		api.login('ptc', self.username, self.password)
-		time.sleep(2)
-		req = api.create_request()
-		req.mark_tutorial_complete(tutorials_completed = 0, send_marketing_emails = False, send_push_notifications = False)
-		response = req.call()
-		if type(response) == dict and response['status_code'] == 1 and response['responses']['MARK_TUTORIAL_COMPLETE']['success'] == True:
-			self.tosAccept = True
-			self.makeDictionary()
-	def makeDictionary(self):
-		self.dictionary = {
+	def to_dict(self):
+		return {
 			'Username': self.username,
 			'Password': self.password,
 			'Email': self.mailbox.email,
@@ -262,13 +261,17 @@ class accountObject:
 			'TOS accepted': self.tosAccept,
 			'Email accepted': self.emailAccept
 		}
+	def acceptTos(self):
+		s = acceptTos(self.username, self.password)
+		self.tosAccept = s
+		return s
 	def save(self):
 		if self.accountStore != None:
 			if self.storeIndex == None:
 				self.storeIndex = len(self.accountStore.accounts)
-				self.accountStore.add(self.dictionary)
+				self.accountStore.add(self.to_dict())
 			else:
-				self.accountStore.upd(self.storeIndex, self.dictionary)
+				self.accountStore.upd(self.storeIndex, self.to_dict())
 if __name__ == '__main__':
 	creatorQueue = Queue.Queue()
 	tosQueue = Queue.Queue()
