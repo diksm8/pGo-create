@@ -38,11 +38,15 @@ Based on ~~[Pokemon Trainer Account Mass Account Generator](https://github.com/d
 ]
 ```
 
-##Requirements that can be hard to find
-#####pgoapi
-`pip install git+https://github.com/keyphact/pgoapi.git#egg=pgoapi`
-#####lxml
-Navigate to www.lfd.uci.edu/~gohlke/pythonlibs/#lxml and download the correct version for you, probably `lxml-3.6.1-cp27-cp27m-win32.whl` and install it using `pip install lxml-3.6.1-cp27-cp27m-win32.whl`
+##Install
+###Windows
+Installation on windows requires an extra step.
+
+Navigate to www.lfd.uci.edu/~gohlke/pythonlibs/#lxml and download `lxml-3.6.1-cp27-cp27m-win32.whl`. Install it using `pip install lxml-3.6.1-cp27-cp27m-win32.whll`. If you get an error (very unlikely) try the `lxml-3.6.1-cp27-cp27m-win_amd64.whl` instead.
+
+After that you can install the actual script. Clone this repo and navigate to it, run `python setupt.py install`.
+###Unix (OSX/Linux)
+Clone this repo and navigate to it, run `python setupt.py install`.
 
 
 ##ToDo
