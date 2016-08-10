@@ -305,7 +305,8 @@ class accountObject:
 			else:
 				self.accountStore.upd(self.storeIndex, self.to_dict())
 
-if __name__ == '__main__':
+def run():
+	global creatorQueue, tosQueue, verifierQueue, logQueue, requestSleepTimer, requestSleepTimerB
 	creatorQueue = Queue.Queue()
 	tosQueue = Queue.Queue()
 	verifierQueue = Queue.Queue()
@@ -327,3 +328,6 @@ if __name__ == '__main__':
 		sys.exit(1)
 
 	sys.exit(0)
+
+if __name__ == '__main__':
+	run()

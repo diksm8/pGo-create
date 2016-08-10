@@ -1,2 +1,5 @@
 accounts.json
 debug.log
+/venv
+/build
+/dist
