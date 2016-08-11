@@ -40,6 +40,7 @@ Based on ~~[Pokemon Trainer Account Mass Account Generator](https://github.com/d
 
 ##Install
 ###Windows
+[Instalaltion video](https://u.pomf.is/rnugfa.mp4)
 Installation on windows requires extra steps.
 
 
