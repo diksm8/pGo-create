@@ -1,4 +1,4 @@
-#Pokemon Account Creator made in Python 2.7
+#NOT WORKING Pokemon Account Creator made in Python 2.7 NOT WORKING
 Based on ~~[Pokemon Trainer Account Mass Account Generator](https://github.com/dannybess/PokemonGo-Account-Generator/) by [dannybess](https://github.com/dannybess)~~, [PoGoTos](https://github.com/TachyonRSA/PoGoTos) by [Tachyon](https://github.com/TachyonRSA) and the [pgoapi](https://github.com/keyphact/pgoapi) by [KeyPhact Moon](https://github.com/keyphact)
 
 ##Features
