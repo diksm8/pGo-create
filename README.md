@@ -47,9 +47,9 @@ Navigate to www.lfd.uci.edu/~gohlke/pythonlibs/#lxml and download `lxml-3.6.1-cp
 
 Install [Microsoft Visual C++ Compiler for Python 2.7](https://www.microsoft.com/en-us/download/details.aspx?id=44266)
 
-After that you can install the actual script. Clone this repo and navigate to it, run `python setupt.py install`.
+After that you can install the actual script. Clone this repo and navigate to it, run `python setup.py install`.
 ###Unix (OSX/Linux)
-Clone this repo and navigate to it, run `python setupt.py install`.
+Clone this repo and navigate to it, run `python setup.py install`.
 
 
 ##ToDo
