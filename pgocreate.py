@@ -16,9 +16,10 @@ sys.setdefaultencoding('utf-8')
 @click.option('--size', default=10, type=click.IntRange(6, 16, clamp=True), help='Username size, range between 5 and 20.')
 @click.option('--password', default=None, help='Password to use for all accounts. If this option is not used passwords will be randomized for each account.')
 @click.option('--threads', default=4, type=click.IntRange(1,128, clamp=True), help='Amount of threads for each task, range between 1 and 128. Default is 4, no more than 16 is recommended.')
+@click.option('--pos', nargs=2, type=float, required=True, help='Position in LAT and LON, ex. --pos LAT LON.')
 @click.argument('outfile', default='accounts.json', required=False)
 @click.command()
-def main(accounts, size, password, threads, outfile):
+def main(accounts, size, password, threads, pos, outfile):
 	"""This is a script to create Pokémon Go (PTC) accounts and accept the Terms of Service. Made by two skids who can't code for shit."""
 	global accountStore
 	accountStore = pokeAccountStore(outfile)
@@ -39,6 +40,7 @@ def main(accounts, size, password, threads, outfile):
 		newAccount = accountObject(accountStore)
 		newAccount.username = idGenerator(size)
 		newAccount.password = password if password != None else idGenerator(12, string.ascii_uppercase + string.ascii_lowercase + string.digits)
+		newAccount.pos = pos
 		creatorQueue.put(newAccount)
 
 	for _ in range(accounts):
@@ -187,9 +189,9 @@ def makeClubAccount(accObj):
 
 	return accObj
 
-def acceptTos(username, password):
+def acceptTos(username, password, pos):
 	api = PGoApi()
-	api.set_position(40.7127837, -74.005941, 0.0)
+	api.set_position(pos[0], pos[1], 0.0)
 
 	retryCount = 0
 	while True:
@@ -281,6 +283,7 @@ class accountObject:
 		self.emailAccept = False
 		self.errorState = None
 		self.storeIndex = None
+		self.pos = [40.7127837, -74.005941]
 		self.accountStore = accountStore
 	def setupMailbox(self):
 		self.mailbox = pokeAnonbox()
@@ -294,7 +297,7 @@ class accountObject:
 			'Email accepted': self.emailAccept
 		}
 	def acceptTos(self):
-		s = acceptTos(self.username, self.password)
+		s = acceptTos(self.username, self.password, self.pos)
 		self.tosAccept = s
 		return s
 	def save(self):
