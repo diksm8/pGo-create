@@ -1,23 +1,23 @@
-#NOT WORKING Pokemon Account Creator made in Python 2.7 NOT WORKING
+# NOT WORKING Pokemon Account Creator made in Python 2.7 NOT WORKING
 Based on ~~[Pokemon Trainer Account Mass Account Generator](https://github.com/dannybess/PokemonGo-Account-Generator/) by [dannybess](https://github.com/dannybess)~~, [PoGoTos](https://github.com/TachyonRSA/PoGoTos) by [Tachyon](https://github.com/TachyonRSA) and the [pgoapi](https://github.com/keyphact/pgoapi) by [KeyPhact Moon](https://github.com/keyphact)
 
-##Features
+## Features
 * Create accounts
 * Verify email
 * Accept Pokémon Go ToS using API
 * Ouput to neat json file [Example](https://github.com/diksm8/pGo-create/blob/master/README.md#example-output)
 * Threading
 
-##Usage
+## Usage
 `pgocreate.py [OPTIONS] [OUTFILE]`
-####Options
+#### Options
 * `--accounts` Number of accounts to make. Default is 50.
 * `--size` Size of username, range between 6 and 16. Default is 10.
 * `--password` Password to use for all accounts. If this option is not used passwords will be randomized for each account.
 * `--threads` Amount of threads for each task, range between 1 and 16. Default is 4.
 * `--pos` Position, example `--pos LAT LON`
 
-##Example output
+## Example output
 ```JSON
 [
     {
@@ -39,8 +39,8 @@ Based on ~~[Pokemon Trainer Account Mass Account Generator](https://github.com/d
 ]
 ```
 
-##Install
-###Windows
+## Install
+### Windows
 [Instalaltion video](https://u.pomf.is/rnugfa.mp4)
 Installation on windows requires extra steps.
 
@@ -50,11 +50,11 @@ Navigate to www.lfd.uci.edu/~gohlke/pythonlibs/#lxml and download `lxml-3.6.1-cp
 Install [Microsoft Visual C++ Compiler for Python 2.7](https://www.microsoft.com/en-us/download/details.aspx?id=44266)
 
 After that you can install the actual script. Clone this repo and navigate to it, run `python setup.py install`.
-###Unix (OSX/Linux)
+### Unix (OSX/Linux)
 Clone this repo and navigate to it, run `python setup.py install`.
 
 
-##ToDo
+## ToDo
 - [X] Fix output to not overwrite
 - [X] Fix json output to look like http://pastebin.com/dZy4ZNf5
 - [x] If no password is given, randomize password for each account
